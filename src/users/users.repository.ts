@@ -1,0 +1,41 @@
+import { Injectable } from '@nestjs/common';
+import { catchError, from, throwError } from 'rxjs';
+import { PrismaService } from '../db/prisma.service';
+
+@Injectable()
+export class UsersRepository {
+  constructor(private readonly client: PrismaService) {}
+
+  addUser(email: string, hashedPassword: string) {
+    return from(
+      this.client.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+        },
+      }),
+    ).pipe(
+      catchError((err) =>
+        // service에서 인지할 수 있는 에러로 mapping
+        err.code === 'P2002'
+          ? throwError(() => new Error('user email already exists'))
+          : throwError(() => err),
+      ),
+    );
+  }
+
+  findUserByEmail(email: string) {
+    return from(
+      this.client.user.findUnique({
+        where: {
+          email,
+        },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+        },
+      }),
+    );
+  }
+}
