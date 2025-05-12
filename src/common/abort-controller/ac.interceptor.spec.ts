@@ -19,7 +19,7 @@ import * as request from 'supertest';
 @UseInterceptors(AbortInterceptor)
 class TestController {
   @Get('ok')
-  ok() {
+  ok(@AC() _: AbortController) {
     return of('ok');
   }
 

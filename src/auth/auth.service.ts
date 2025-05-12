@@ -11,15 +11,26 @@ import {
   retryIfFault,
 } from 'src/common/pipe.strategies';
 import { JwtService } from '@nestjs/jwt';
-
+import { ConfigService } from '@nestjs/config';
 export const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
+  private readonly jwtSecret: string;
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const jwtSecret = this.configService.get('JWT_SECRET');
+
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not set');
+    }
+
+    this.jwtSecret = jwtSecret;
+  }
 
   private generateAccessToken(userId: string) {
     return from(
@@ -28,15 +39,16 @@ export class AuthService {
         {
           expiresIn: '30d',
           algorithm: 'HS256',
+          secret: this.jwtSecret,
         },
       ),
     );
   }
 
-  tryAddUser(ac: AbortController, { email, password }: SignUpDto) {
+  tryAddUser(ac: AbortController, { email, password, nickname }: SignUpDto) {
     return from(bcrypt.hash(password, SALT_ROUNDS)).pipe(
       switchMap((hashedPassword) =>
-        this.usersRepository.addUser(email, hashedPassword),
+        this.usersRepository.addUser(email, nickname, hashedPassword),
       ),
       resultBefore(2000),
       retryIfFault(2),

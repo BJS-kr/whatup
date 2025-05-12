@@ -6,18 +6,14 @@ import { AppModule } from './../src/app.module';
 import { ConfigService } from '@nestjs/config';
 import { StartedTestContainer, Wait } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-
+import { execSync } from 'child_process';
+import { writeFileSync } from 'fs';
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let postgresContainer: StartedTestContainer;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    const configService = app.get<ConfigService>(ConfigService);
+    process.env.NODE_ENV = 'test';
 
     postgresContainer = await new PostgreSqlContainer('postgres:16')
       .withPassword('test')
@@ -31,53 +27,67 @@ describe('AppController (e2e)', () => {
         ]),
       )
       .start();
+    const dbUrl = `postgresql://postgres:test@${postgresContainer.getHost()}:${postgresContainer.getFirstMappedPort()}/test`;
 
-    configService.set(
-      'DATABASE_URL',
-      `postgresql://postgres:test@${postgresContainer.getHost()}:${postgresContainer.getFirstMappedPort()}/test`,
-    );
+    writeFileSync('.env.test', `DATABASE_URL=${dbUrl}\nJWT_SECRET=testsecret`);
+    execSync('npm run test:e2e:migrate');
 
-    console.log(postgresContainer.getHost());
-    console.log(postgresContainer.getFirstMappedPort());
+    const baseFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = baseFixture.createNestApplication();
+    const configService = app.get(ConfigService);
+
+    await app.close();
+
+    configService.set('DATABASE_URL', dbUrl);
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(ConfigService)
+      .useValue(configService)
+      .compile();
+
+    app = moduleFixture.createNestApplication();
 
     await app.init();
   }, 1000000);
 
   afterAll(async () => {
     await postgresContainer.stop();
+    await app.close();
   });
 
-  it('should be none', () => {
-    expect(true).toBe(true);
+  it('should be healthy', () => {
+    return request(app.getHttpServer()).get('/health').expect(200);
   });
 
-  // it('should be healthy', () => {
-  //   return request(app.getHttpServer()).get('/health').expect(200);
-  // });
+  it('should be able to sign up', () => {
+    const email = 'test@test.com';
 
-  // it('should be able to sign up', () => {
-  //   const email = 'test@test.com';
+    return request(app.getHttpServer())
+      .post('/auth/sign-up')
+      .send({
+        email,
+        password: 'testpw1234',
+        nickname: 'testnick',
+      })
+      .expect(201)
+      .expect(email);
+  });
 
-  //   return request(app.getHttpServer())
-  //     .post('api/auth/sign-up')
-  //     .send({
-  //       email,
-  //       password: 'test',
-  //     })
-  //     .expect(201)
-  //     .expect(email);
-  // });
+  it('should be able to sign in', () => {
+    const email = 'test@test.com';
+    const password = 'testpw1234';
 
-  // it('should be able to sign in', () => {
-  //   const email = 'test@test.com';
-  //   const password = 'test';
-
-  //   return request(app.getHttpServer())
-  //     .post('api/auth/sign-in')
-  //     .send({
-  //       email,
-  //       password,
-  //     })
-  //     .expect(201);
-  // });
+    return request(app.getHttpServer())
+      .post('/auth/sign-in')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+  });
 });

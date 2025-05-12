@@ -6,11 +6,12 @@ import { PrismaService } from '../db/prisma.service';
 export class UsersRepository {
   constructor(private readonly client: PrismaService) {}
 
-  addUser(email: string, hashedPassword: string) {
+  addUser(email: string, nickname: string, hashedPassword: string) {
     return from(
       this.client.user.create({
         data: {
           email,
+          nickname,
           password: hashedPassword,
         },
       }),

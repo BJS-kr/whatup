@@ -51,9 +51,8 @@ describe('AuthController', () => {
 
     jest.spyOn(usersRepository, 'addUser').mockImplementationOnce(() => {
       return of({
+        ...signUpDto,
         id: '1',
-        email: signUpDto.email,
-        password: signUpDto.password,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

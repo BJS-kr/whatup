@@ -11,7 +11,7 @@ export class SchemaValidator implements PipeTransform {
       return this.schema.parse(value);
     } catch (err) {
       logger.error(err);
-      throw new BadRequestException('unexpected user data');
+      throw new BadRequestException('unexpected request data');
     }
   }
 }
