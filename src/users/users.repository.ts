@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { catchError, from, throwError } from 'rxjs';
-import { PrismaService } from '../db/prisma.service';
+import { PrismaService } from '../common/db/prisma.service';
 
 @Injectable()
 export class UsersRepository {
