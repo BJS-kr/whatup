@@ -18,9 +18,8 @@ export class UsersRepository {
       }),
     ).pipe(
       catchError((err) =>
-        // service에서 인지할 수 있는 에러로 mapping
         err.code === 'P2002'
-          ? throwError(() => new Error('user email already exists'))
+          ? throwError(() => new Error('duplicated user info'))
           : throwError(() => err),
       ),
     );

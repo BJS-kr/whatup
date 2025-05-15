@@ -75,7 +75,7 @@ export class AuthService {
         this.cls.get(AC),
         (err) =>
           new Reason(
-            err?.message === 'user email already exists'
+            err?.message === 'duplicated user info'
               ? RESPONSIBLE.CLIENT
               : RESPONSIBLE.SERVER,
             err.message,

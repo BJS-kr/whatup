@@ -13,10 +13,15 @@ import { AbortInterceptor } from 'src/common/abort-control/abort.interceptor';
 @Controller('auth')
 @UseInterceptors(AbortInterceptor)
 export class AuthController {
+  private readonly secure: boolean = true;
+  private readonly maxAge = 30 * 24 * 60 * 60 * 1000;
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.secure = this.configService.get('NODE_ENV') === 'production';
+  }
 
   @Post('sign-up')
   signUp(@Body(new SchemaValidator(signUpSchema)) signUpDto: SignUpDto) {
@@ -37,8 +42,8 @@ export class AuthController {
       map((token) => {
         res.cookie('accessToken', token, {
           httpOnly: true,
-          secure: this.configService.get('NODE_ENV') === 'production',
-          maxAge: 30 * 24 * 60 * 60 * 1000,
+          secure: this.secure,
+          maxAge: this.maxAge,
         });
       }),
       defaultIfEmpty(NONE),
