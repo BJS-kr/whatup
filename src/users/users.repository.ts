@@ -13,6 +13,7 @@ export class UsersRepository {
           email,
           nickname,
           password: hashedPassword,
+          service: 'test',
         },
       }),
     ).pipe(

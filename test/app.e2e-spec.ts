@@ -3,7 +3,6 @@ import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import { ConfigService } from '@nestjs/config';
 import { StartedTestContainer, Wait } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { execSync } from 'child_process';
@@ -13,8 +12,6 @@ describe('AppController (e2e)', () => {
   let postgresContainer: StartedTestContainer;
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-
     postgresContainer = await new PostgreSqlContainer('postgres:16')
       .withPassword('test')
       .withUsername('postgres')
@@ -32,23 +29,11 @@ describe('AppController (e2e)', () => {
     writeFileSync('.env.test', `DATABASE_URL=${dbUrl}\nJWT_SECRET=testsecret`);
     execSync('npm run test:e2e:migrate');
 
-    const baseFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = baseFixture.createNestApplication();
-    const configService = app.get(ConfigService);
-
-    await app.close();
-
-    configService.set('DATABASE_URL', dbUrl);
+    process.env.DATABASE_URL = dbUrl;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideProvider(ConfigService)
-      .useValue(configService)
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
 

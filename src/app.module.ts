@@ -3,12 +3,14 @@ import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 
+const envFilePath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+
 @Module({
   imports: [
     AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+      envFilePath,
       cache: true,
       expandVariables: true,
     }),

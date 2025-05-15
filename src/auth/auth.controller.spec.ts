@@ -53,6 +53,7 @@ describe('AuthController', () => {
       return of({
         ...signUpDto,
         id: '1',
+        service: 'test',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
