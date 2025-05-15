@@ -9,27 +9,46 @@ import {
   abortIfError,
   resultBefore,
   retryIfFault,
-} from 'src/common/pipe.strategies';
+} from 'src/common/strategies/pipe.strategies';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { ClsService } from 'nestjs-cls';
+import { AbortControllerStorage } from 'src/common/cls/ac.store';
+import { AC } from 'src/common/constants';
+import { Algorithm } from 'jsonwebtoken';
 export const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
   private readonly jwtSecret: string;
+  private readonly expiresIn: string;
+  private readonly algorithm: Algorithm;
 
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly cls: ClsService<AbortControllerStorage>,
   ) {
     const jwtSecret = this.configService.get('JWT_SECRET');
+    const expiresIn = this.configService.get('JWT_EXPIRES_IN');
+    const algorithm = this.configService.get<Algorithm>('JWT_ALGORITHM');
 
     if (!jwtSecret) {
       throw new Error('JWT_SECRET is not set');
     }
 
+    if (!expiresIn) {
+      throw new Error('JWT_EXPIRES_IN is not set');
+    }
+
+    if (!algorithm) {
+      throw new Error('JWT_ALGORITHM is not set');
+    }
+
     this.jwtSecret = jwtSecret;
+    this.expiresIn = expiresIn;
+    this.algorithm = algorithm;
   }
 
   private generateAccessToken(userId: string) {
@@ -37,15 +56,15 @@ export class AuthService {
       this.jwtService.signAsync(
         { userId },
         {
-          expiresIn: '30d',
-          algorithm: 'HS256',
+          expiresIn: this.expiresIn,
+          algorithm: this.algorithm,
           secret: this.jwtSecret,
         },
       ),
     );
   }
 
-  tryAddUser(ac: AbortController, { email, password, nickname }: SignUpDto) {
+  tryAddUser({ email, password, nickname }: SignUpDto) {
     return from(bcrypt.hash(password, SALT_ROUNDS)).pipe(
       switchMap((hashedPassword) =>
         this.usersRepository.addUser(email, nickname, hashedPassword),
@@ -53,7 +72,7 @@ export class AuthService {
       resultBefore(2000),
       retryIfFault(2),
       abortIfError(
-        ac,
+        this.cls.get(AC),
         (err) =>
           new Reason(
             err?.message === 'user email already exists'
@@ -65,7 +84,7 @@ export class AuthService {
     );
   }
 
-  tryGetAccessToken(ac: AbortController, { email, password }: SignInDto) {
+  tryGetAccessToken({ email, password }: SignInDto) {
     return from(this.usersRepository.findUserByEmail(email)).pipe(
       switchMap((user) => {
         if (!user) return throwError(() => new Error('user not found'));
@@ -81,7 +100,7 @@ export class AuthService {
       switchMap((user) => this.generateAccessToken(user.id)),
       resultBefore(2000),
       retryIfFault(2),
-      abortIfError(ac, (err) =>
+      abortIfError(this.cls.get(AC), (err) =>
         err.message === 'user not found' ||
         err.message === 'wrong id or password'
           ? new Reason(RESPONSIBLE.CLIENT, err.message)

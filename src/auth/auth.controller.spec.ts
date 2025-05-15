@@ -13,10 +13,14 @@ import * as bcrypt from 'bcrypt';
 import { UsersModule } from 'src/users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { ClsModule, ClsService } from 'nestjs-cls';
+import { AC } from 'src/common/constants';
+import { AbortControllerStorage } from 'src/common/cls/ac.store';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let usersRepository: UsersRepository;
+  let cls: ClsService<AbortControllerStorage>;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,6 +33,7 @@ describe('AuthController', () => {
         }),
         UsersModule,
         ConfigModule,
+        ClsModule,
       ],
       controllers: [AuthController],
       providers: [AuthService],
@@ -39,6 +44,7 @@ describe('AuthController', () => {
 
     controller = module.get<AuthController>(AuthController);
     usersRepository = module.get<UsersRepository>(UsersRepository);
+    cls = module.get<ClsService<AbortControllerStorage>>(ClsService);
   });
 
   it('should sign up', async () => {
@@ -47,22 +53,27 @@ describe('AuthController', () => {
       nickname: 'test',
       password: 'password',
     };
-    const ac = new AbortController();
 
     jest.spyOn(usersRepository, 'addUser').mockImplementationOnce(() => {
       return of({
         ...signUpDto,
         id: '1',
         service: 'test',
+        like: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
     });
 
-    const result = controller.signUp(signUpDto, ac);
-    const value = await firstValueFrom(result);
-    expect(ac.signal.aborted).toBe(false);
-    expect(value).toBe(signUpDto.email);
+    await cls.runWith({ [AC]: new AbortController() }, async () => {
+      const result = controller.signUp(signUpDto);
+      console.log(cls.get(AC));
+
+      const value = await firstValueFrom(result);
+
+      expect(cls.get(AC).signal.aborted).toBe(false);
+      expect(value).toBe(signUpDto.email);
+    });
   });
 
   it('should fail to sign up if user email already exists', async () => {
@@ -78,19 +89,21 @@ describe('AuthController', () => {
         throwError(() => new Error('user email already exists')),
       );
 
-    const ac = new AbortController();
+    await cls.runWith({ [AC]: new AbortController() }, async () => {
+      const result = controller.signUp(signUpDto);
 
-    const result = controller.signUp(signUpDto, ac);
-
-    await new Promise<void>((res) => {
-      result.subscribe({
-        complete: res,
+      await new Promise<void>((res) => {
+        result.subscribe({
+          complete: res,
+        });
       });
-    });
 
-    expect(ac.signal.aborted).toBe(true);
-    expect(ac.signal.reason).toBeInstanceOf(Reason);
-    expect(ac.signal.reason.message).toBe('user email already exists');
+      expect(cls.get(AC).signal.aborted).toBe(true);
+      expect(cls.get(AC).signal.reason).toBeInstanceOf(Reason);
+      expect(cls.get(AC).signal.reason.message).toBe(
+        'user email already exists',
+      );
+    });
   });
 
   it('should sign in', async () => {
@@ -100,7 +113,6 @@ describe('AuthController', () => {
       email: 'test@test.com',
       password,
     };
-    const ac = new AbortController();
 
     jest
       .spyOn(usersRepository, 'findUserByEmail')
@@ -113,23 +125,26 @@ describe('AuthController', () => {
       });
 
     const mockResponse = createMock<Response>();
-    const result = controller.signIn(signInDto, mockResponse, ac);
-    await new Promise<void>((res) => {
-      result.subscribe({
-        complete: res,
-      });
-    });
 
-    expect(ac.signal.aborted).toBe(false);
-    expect(mockResponse.cookie).toHaveBeenCalledWith(
-      'accessToken',
-      expect.any(String),
-      {
-        httpOnly: true,
-        secure: false,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      },
-    );
+    await cls.runWith({ [AC]: new AbortController() }, async () => {
+      const result = controller.signIn(signInDto, mockResponse);
+      await new Promise<void>((res) => {
+        result.subscribe({
+          complete: res,
+        });
+      });
+
+      expect(cls.get(AC).signal.aborted).toBe(false);
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'accessToken',
+        expect.any(String),
+        {
+          httpOnly: true,
+          secure: false,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        },
+      );
+    });
   });
 
   it('should fail to sign in if password is not matched', async () => {
@@ -137,7 +152,7 @@ describe('AuthController', () => {
       email: 'test@test.com',
       password: 'password',
     };
-    const ac = new AbortController();
+
     const mockResponse = createMock<Response>();
     jest.spyOn(usersRepository, 'findUserByEmail').mockImplementationOnce(() =>
       of({
@@ -147,16 +162,18 @@ describe('AuthController', () => {
       }),
     );
 
-    const result = controller.signIn(signInDto, mockResponse, ac);
-    await new Promise<void>((res) => {
-      result.subscribe({
-        complete: res,
+    await cls.runWith({ [AC]: new AbortController() }, async () => {
+      const result = controller.signIn(signInDto, mockResponse);
+      await new Promise<void>((res) => {
+        result.subscribe({
+          complete: res,
+        });
       });
-    });
 
-    expect(ac.signal.aborted).toBe(true);
-    expect(ac.signal.reason).toBeInstanceOf(Reason);
-    expect(ac.signal.reason.message).toBe('wrong id or password');
+      expect(cls.get(AC).signal.aborted).toBe(true);
+      expect(cls.get(AC).signal.reason).toBeInstanceOf(Reason);
+      expect(cls.get(AC).signal.reason.message).toBe('wrong id or password');
+    });
   });
 
   it('should fail to sign in if user is not found', async () => {
@@ -164,21 +181,22 @@ describe('AuthController', () => {
       email: 'test@test.com',
       password: 'password',
     };
-    const ac = new AbortController();
     const mockResponse = createMock<Response>();
     jest
       .spyOn(usersRepository, 'findUserByEmail')
       .mockImplementationOnce(() => of(null));
 
-    const result = controller.signIn(signInDto, mockResponse, ac);
-    await new Promise<void>((res) => {
-      result.subscribe({
-        complete: res,
+    await cls.runWith({ [AC]: new AbortController() }, async () => {
+      const result = controller.signIn(signInDto, mockResponse);
+      await new Promise<void>((res) => {
+        result.subscribe({
+          complete: res,
+        });
       });
-    });
 
-    expect(ac.signal.aborted).toBe(true);
-    expect(ac.signal.reason).toBeInstanceOf(Reason);
-    expect(ac.signal.reason.message).toBe('user not found');
+      expect(cls.get(AC).signal.aborted).toBe(true);
+      expect(cls.get(AC).signal.reason).toBeInstanceOf(Reason);
+      expect(cls.get(AC).signal.reason.message).toBe('user not found');
+    });
   });
 });

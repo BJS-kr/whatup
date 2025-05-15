@@ -1,7 +1,7 @@
 import { catchError, filter, Observable, of, retry, timer } from 'rxjs';
 import { throwError, timeout } from 'rxjs';
-import { ABORTED } from './constants';
-import { Fault, Reason } from './errors/custom.errors';
+import { ABORTED } from '../constants';
+import { Fault, Reason } from '../errors/custom.errors';
 import { Logger } from '@nestjs/common';
 
 type MustReturnReason = (err: any) => Reason;

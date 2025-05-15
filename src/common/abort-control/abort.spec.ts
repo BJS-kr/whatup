@@ -1,39 +1,44 @@
-import {
-  Controller,
-  Get,
-  UseInterceptors,
-  BadRequestException,
-} from '@nestjs/common';
-import { AbortInterceptor } from './ac.interceptor';
+import { Controller, Get, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { TestingModule } from '@nestjs/testing';
-import { AC } from './ac.decorator';
-import { abortIfError } from '../pipe.strategies';
+import { abortIfError } from '../strategies/pipe.strategies';
 import { of, throwError } from 'rxjs';
 import { Reason } from 'src/common/errors/custom.errors';
 import { RESPONSIBLE } from 'src/common/errors/custom.errors';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
+import { AbortInterceptor } from './abort.interceptor';
+import { ClsModule, ClsService } from 'nestjs-cls';
+import { AbortControllerStorage } from '../cls/ac.store';
+import { AC } from '../constants';
 
 @Controller()
 @UseInterceptors(AbortInterceptor)
 class TestController {
+  constructor(private readonly cls: ClsService<AbortControllerStorage>) {}
+
   @Get('ok')
-  ok(@AC() _: AbortController) {
+  ok() {
     return of('ok');
   }
 
   @Get('client-error')
-  clientError(@AC() ac: AbortController) {
+  clientError() {
     return throwError(() => new Error('client error')).pipe(
-      abortIfError(ac, (err) => new Reason(RESPONSIBLE.CLIENT, err.message)),
+      abortIfError(
+        this.cls.get(AC),
+        (err) => new Reason(RESPONSIBLE.CLIENT, err.message),
+      ),
     );
   }
 
   @Get('server-error')
-  serverError(@AC() ac: AbortController) {
+  serverError() {
     return throwError(() => new Error('server error')).pipe(
-      abortIfError(ac, (err) => new Reason(RESPONSIBLE.SERVER, err.message)),
+      abortIfError(
+        this.cls.get(AC),
+        (err) => new Reason(RESPONSIBLE.SERVER, err.message),
+      ),
     );
   }
 }
@@ -43,6 +48,14 @@ describe('AbortInterceptor', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [
+        ClsModule.forRoot({
+          middleware: {
+            mount: true,
+            setup: (cls) => cls.set(AC, new AbortController()),
+          },
+        }),
+      ],
       controllers: [TestController],
     }).compile();
 
@@ -57,11 +70,11 @@ describe('AbortInterceptor', () => {
     await app.close();
   });
 
-  it('should not throw if request is not aborted', async () => {
+  it('should not throw if request is not aborted', () => {
     return request(app.getHttpServer()).get('/ok').expect(200).expect('ok');
   });
 
-  it('should throw if request is aborted', async () => {
+  it('should throw if request is aborted', () => {
     return request(app.getHttpServer())
       .get('/client-error')
       .expect(400)
@@ -71,7 +84,7 @@ describe('AbortInterceptor', () => {
       });
   });
 
-  it('should throw if request is aborted', async () => {
+  it('should throw if request is aborted', () => {
     return request(app.getHttpServer())
       .get('/server-error')
       .expect(500)
