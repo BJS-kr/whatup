@@ -42,6 +42,9 @@
     "jsonwebtoken": "^9.0.2",
     "mo": "^1.7.3",
     "nestjs-cls": "^5.4.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^3.24.3"
@@ -59,7 +62,10 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.7",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
     "@types/supertest": "^6.0.2",
+    "concurrently": "^8.2.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -75,8 +81,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0",
-    "concurrently": "^8.2.2"
+    "typescript-eslint": "^8.20.0"
   },
   "jest": {
     "moduleFileExtensions": [
