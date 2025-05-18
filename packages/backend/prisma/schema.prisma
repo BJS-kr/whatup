@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  nickname  String   @unique
+  password  String   
+  service   String
+  like      Int      @default(0)
+
+  threads Thread[]
+  threadContents ThreadContent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("users")
+}
+
+model Thread {
+  id          String   @id @default(uuid())
+
+  author      User     @relation(fields: [authorId], references: [id])
+  authorId    String
+
+  title       String
+  description String   // Description of the thread's direction
+  maxLength   Int      // Maximum length for each content piece
+  autoAccept  Boolean  @default(false) // Whether to automatically accept new content
+  like        Int      @default(0)
+
+  threadContents ThreadContent[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("threads")
+}
+
+model ThreadContent {
+  id          String   @id @default(uuid())
+
+  author      User     @relation(fields: [authorId], references: [id])
+  authorId    String
+
+  thread      Thread   @relation(fields: [threadId], references: [id])
+  threadId    String
+
+  parentContent ThreadContent?  @relation("ContentToContent", fields: [parentContentId], references: [id])
+  parentContentId String?
+  childContents  ThreadContent[] @relation("ContentToContent")
+
+  status      ContentStatus @default(PENDING) // PENDING, ACCEPTED, REJECTED
+  like        Int      @default(0)
+
+  order       Int
+  content     String
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("thread_contents")
+}
+
+enum ContentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
