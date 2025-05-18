@@ -45,6 +45,8 @@ export class AuthController {
           secure: this.secure,
           maxAge: this.maxAge,
         });
+
+        return token;
       }),
       defaultIfEmpty(NONE),
     );

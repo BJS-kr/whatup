@@ -2,25 +2,53 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
 import type { Thread, CreateThreadDto, AddContentDto } from './types';
 
+interface SignInInput {
+  email: string;
+  password: string;
+}
+
+interface SignUpInput {
+  email: string;
+  nickname: string;
+  password: string;
+}
+
 // Auth mutations
-export const useSignUp = () => {
+export function useSignUp() {
   return useMutation({
-    mutationFn: async (dto: {
-      email: string;
-      nickname: string;
-      password: string;
-    }) => {
-      const { data } = await apiClient.post('/auth/signup', dto);
+    mutationFn: async (input: SignUpInput) => {
+      const { data } = await apiClient.post<string>('/auth/sign-up', input);
+      // Store the token in localStorage for client-side access
+      localStorage.setItem('accessToken', data);
       return data;
     },
   });
-};
+}
 
-export const useSignIn = () => {
+export function useSignIn() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (dto: { email: string; password: string }) => {
-      const { data } = await apiClient.post('/auth/signin', dto);
+    mutationFn: async (input: SignInInput) => {
+      const { data } = await apiClient.post<string>('/auth/sign-in', input);
+      // Store the token in localStorage for client-side access
+      localStorage.setItem('accessToken', data);
       return data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch auth status
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
+    },
+  });
+}
+
+export const useSignOut = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      localStorage.removeItem('accessToken');
+      queryClient.clear();
     },
   });
 };

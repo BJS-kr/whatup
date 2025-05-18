@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClsModule } from 'nestjs-cls';
 import { AppController } from './app.controller';
@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ThreadsModule } from './threads/threads.module';
 import { AC } from './common/constants';
 import { DbModule } from './common/db/db.module';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 const envFilePath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
 
@@ -32,4 +33,8 @@ const envFilePath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

@@ -8,11 +8,10 @@ import {
   VStack,
   Heading,
   Text,
-  Link as ChakraLink,
   useToast,
   FormErrorMessage,
 } from '@chakra-ui/react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSignUp } from '../../api/hooks';
 
 export function SignUp() {
@@ -46,9 +45,9 @@ export function SignUp() {
     }
 
     if (!nickname) {
-      newErrors.nickname = 'Nickname is required';
+      newErrors.nickname = 'Pen name is required';
     } else if (nickname.length < 2) {
-      newErrors.nickname = 'Nickname must be at least 2 characters';
+      newErrors.nickname = 'Pen name must be at least 2 characters';
     }
 
     if (!password) {
@@ -113,11 +112,11 @@ export function SignUp() {
             </FormControl>
 
             <FormControl isInvalid={!!errors.nickname}>
-              <FormLabel>Nickname</FormLabel>
+              <FormLabel>Pen Name</FormLabel>
               <Input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="Choose a nickname"
+                placeholder="Choose a pen name"
               />
               <FormErrorMessage>{errors.nickname}</FormErrorMessage>
             </FormControl>
@@ -158,9 +157,16 @@ export function SignUp() {
 
         <Text textAlign="center">
           Already have an account?{' '}
-          <ChakraLink as={RouterLink} to="/signin" color="blue.500">
+          <Button
+            variant="link"
+            color="blue.500"
+            onClick={() => navigate('/signin')}
+            p={0}
+            h="auto"
+            fontWeight="normal"
+          >
             Sign in
-          </ChakraLink>
+          </Button>
         </Text>
       </VStack>
     </Box>

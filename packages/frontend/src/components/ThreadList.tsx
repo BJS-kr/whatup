@@ -18,13 +18,21 @@ import {
   Input,
   InputGroup,
   InputRightElement,
+  Icon,
+  Flex,
 } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
-import { FaHeart, FaPlus, FaChevronDown } from 'react-icons/fa';
-import { Icon } from '@chakra-ui/react';
-import { useThreads, useLikeThread, useSignIn } from '../api/hooks';
+import { useNavigate } from 'react-router-dom';
+import {
+  FaHeart,
+  FaPlus,
+  FaChevronDown,
+  FaSignInAlt,
+  FaUserPlus,
+  FaSignOutAlt,
+} from 'react-icons/fa';
+import { useThreads, useLikeThread, useSignIn, useSignOut } from '../api/hooks';
 import type { Thread, ThreadContent } from '../api/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const createExampleContent = (
@@ -162,7 +170,7 @@ const ThreadCard = ({ thread, isExample = false, onLike }: ThreadCardProps) => {
 
   return (
     <ChakraLink
-      as={Link as any}
+      as={ChakraLink as any}
       to={isExample ? '#' : `/threads/${thread.id}`}
       key={thread.id}
       _hover={{ textDecoration: 'none' }}
@@ -179,6 +187,9 @@ const ThreadCard = ({ thread, isExample = false, onLike }: ThreadCardProps) => {
           transform: 'translateY(-4px) scale(1.01)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           borderColor: 'purple.300',
+          _before: {
+            opacity: 1,
+          },
         }}
         borderColor="purple.100"
         position="relative"
@@ -194,11 +205,6 @@ const ThreadCard = ({ thread, isExample = false, onLike }: ThreadCardProps) => {
             'linear-gradient(90deg, purple.400, pink.400, orange.400)',
           opacity: 0,
           transition: 'opacity 0.3s',
-        }}
-        _hover={{
-          _before: {
-            opacity: 1,
-          },
         }}
       >
         <Stack spacing={4}>
@@ -383,65 +389,41 @@ export function ThreadList() {
   const signIn = useSignIn();
   const { data: threads = [], isLoading, error } = useThreads();
   const likeThread = useLikeThread();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
+  const signOut = useSignOut();
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await signIn.mutateAsync({ email, password });
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    setIsAuthenticated(!!token);
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut.mutateAsync();
+    setIsAuthenticated(false);
   };
-
-  const handleLike = async (threadId: string) => {
-    await likeThread.mutateAsync(threadId);
-  };
-
-  if (isLoading) {
-    return (
-      <Container maxW="container.lg" py={8}>
-        <Stack spacing={8}>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Box>
-              <Heading>Cows</Heading>
-              <Text color="gray.600" fontSize="md" mt={1}>
-                The{' '}
-                <Text as="span" fontWeight="bold">
-                  CO
-                </Text>
-                laborative{' '}
-                <Text as="span" fontWeight="bold">
-                  W
-                </Text>
-                riting{' '}
-                <Text as="span" fontWeight="bold">
-                  S
-                </Text>
-                pace
-              </Text>
-            </Box>
-            <Button colorScheme="blue" isDisabled>
-              Create New Thread
-            </Button>
-          </Box>
-          <VStack spacing={4} align="stretch">
-            {[1, 2, 3].map((i) => (
-              <Box key={i} p={6} borderWidth="1px" borderRadius="lg">
-                <Stack spacing={3}>
-                  <Skeleton height="24px" width="60%" />
-                  <Skeleton height="20px" width="80%" />
-                  <Skeleton height="16px" width="40%" />
-                </Stack>
-              </Box>
-            ))}
-          </VStack>
-        </Stack>
-      </Container>
-    );
-  }
 
   return (
     <Container maxW="container.xl" py={8}>
+      {isAuthenticated && (
+        <Flex justify="flex-end" mb={8}>
+          <Button
+            leftIcon={<Icon as={FaSignOutAlt} />}
+            colorScheme="red"
+            variant="ghost"
+            onClick={handleSignOut}
+            _hover={{
+              bg: 'red.50',
+              transform: 'translateY(-2px)',
+              shadow: 'md',
+            }}
+            transition="all 0.2s"
+          >
+            Sign Out
+          </Button>
+        </Flex>
+      )}
+
       <Box
         textAlign="center"
         mb={12}
@@ -640,7 +622,7 @@ export function ThreadList() {
                             <Text color="purple.600" fontWeight="bold" mb={2}>
                               {selectedBranch === 1
                                 ? 'Story continues...'
-                                : 'Candidate #1'}
+                                : 'Contribution #1'}
                             </Text>
                             <Text color="gray.600" fontSize="sm">
                               Inside, Sarah discovers a hidden room filled with
@@ -685,7 +667,7 @@ export function ThreadList() {
                             <Text color="purple.600" fontWeight="bold" mb={2}>
                               {selectedBranch === 2
                                 ? 'Story continues...'
-                                : 'Candidate #2'}
+                                : 'Contribution #2'}
                             </Text>
                             <Text color="gray.600" fontSize="sm">
                               As Sarah explores the mansion, she finds a series
@@ -715,7 +697,7 @@ export function ThreadList() {
               {/* Second Box - Accept First Contribution */}
               <VStack spacing={4} align="stretch" w="50%">
                 <Text color="purple.500" fontSize="2xl" fontWeight="medium">
-                  Or, Open to contributors
+                  Or, Accept all
                 </Text>
                 <Box
                   p={6}
@@ -788,61 +770,7 @@ export function ThreadList() {
           </VStack>
         </Box>
 
-        {!signIn.isSuccess ? (
-          <Box
-            p={8}
-            borderRadius="xl"
-            bg="rgba(255, 255, 255, 0.9)"
-            backdropFilter="blur(10px)"
-            borderWidth="1px"
-            borderColor="purple.100"
-            shadow="xl"
-            textAlign="center"
-          >
-            <VStack spacing={6}>
-              <Heading
-                size="lg"
-                bgGradient="linear(to-r, purple.600, pink.600)"
-                bgClip="text"
-                fontWeight="bold"
-              >
-                Start Your Journey
-              </Heading>
-              <Text color="gray.600" fontSize="lg" maxW="2xl">
-                Sign in to create your own threads and contribute to the
-                collaborative storytelling experience.
-              </Text>
-              <HStack spacing={4} justify="center">
-                <Link to="/signin" style={{ textDecoration: 'none' }}>
-                  <Button
-                    colorScheme="purple"
-                    size="lg"
-                    _hover={{
-                      transform: 'translateY(-2px)',
-                      shadow: 'lg',
-                    }}
-                    transition="all 0.2s"
-                  >
-                    Sign In
-                  </Button>
-                </Link>
-                <Link to="/signup" style={{ textDecoration: 'none' }}>
-                  <Button
-                    colorScheme="pink"
-                    size="lg"
-                    _hover={{
-                      transform: 'translateY(-2px)',
-                      shadow: 'lg',
-                    }}
-                    transition="all 0.2s"
-                  >
-                    Sign Up
-                  </Button>
-                </Link>
-              </HStack>
-            </VStack>
-          </Box>
-        ) : (
+        {isAuthenticated ? (
           <Box
             p={8}
             borderRadius="xl"
@@ -861,20 +789,19 @@ export function ThreadList() {
               >
                 Your Threads
               </Heading>
-              <Link to="/threads/new" style={{ textDecoration: 'none' }}>
-                <Button
-                  colorScheme="purple"
-                  size="lg"
-                  leftIcon={<Icon as={FaPlus} />}
-                  _hover={{
-                    transform: 'translateY(-2px)',
-                    shadow: 'lg',
-                  }}
-                  transition="all 0.2s"
-                >
-                  Create New Thread
-                </Button>
-              </Link>
+              <Button
+                colorScheme="purple"
+                size="lg"
+                leftIcon={<Icon as={FaPlus} />}
+                onClick={() => navigate('/threads/new')}
+                _hover={{
+                  transform: 'translateY(-2px)',
+                  shadow: 'lg',
+                }}
+                transition="all 0.2s"
+              >
+                Create New Thread
+              </Button>
               {isLoading ? (
                 <Stack spacing={4}>
                   {[1, 2, 3].map((i) => (
@@ -920,11 +847,53 @@ export function ThreadList() {
                     <ThreadCard
                       key={thread.id}
                       thread={thread}
-                      onLike={() => handleLike(thread.id)}
+                      onLike={() => likeThread.mutateAsync(thread.id)}
                     />
                   ))}
                 </Box>
               )}
+            </VStack>
+          </Box>
+        ) : (
+          <Box
+            p={8}
+            borderRadius="xl"
+            bg="white"
+            borderWidth="1px"
+            borderColor="gray.200"
+            shadow="lg"
+            flex="1"
+          >
+            <VStack spacing={6} align="stretch">
+              <Heading
+                size="xl"
+                bgGradient="linear(to-r, purple.400, pink.400)"
+                bgClip="text"
+                textAlign="center"
+              >
+                Start Your Journey
+              </Heading>
+              <Text textAlign="center" color="gray.600">
+                Join our community of dreamers and storytellers
+              </Text>
+              <HStack spacing={4} justify="center">
+                <Button
+                  colorScheme="purple"
+                  size="lg"
+                  leftIcon={<Icon as={FaSignInAlt} />}
+                  onClick={() => navigate('/signin')}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  colorScheme="pink"
+                  size="lg"
+                  leftIcon={<Icon as={FaUserPlus} />}
+                  onClick={() => navigate('/signup')}
+                >
+                  Sign Up
+                </Button>
+              </HStack>
             </VStack>
           </Box>
         )}
