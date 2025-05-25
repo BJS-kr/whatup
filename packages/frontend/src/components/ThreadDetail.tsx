@@ -10,50 +10,84 @@ import {
   useToast,
   VStack,
   HStack,
-  IconButton,
   Icon,
+  Avatar,
+  Skeleton,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  PopoverArrow,
 } from '@chakra-ui/react';
-import { useParams } from 'react-router-dom';
-import { FaThumbsUp, FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
 import {
   useThread,
   useAddContent,
-  useAcceptContent,
-  useRejectContent,
   useReorderContent,
   useLikeContent,
 } from '../api/hooks';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  containerStyles,
+  backButtonStyles,
+  titleStyles,
+  descriptionStyles,
+  contentBoxStyles,
+  threadContentStyles,
+  contentTextStyles,
+  popoverContentStyles,
+  avatarStyles,
+  authorNameStyles,
+  textareaStyles,
+  submitButtonStyles,
+} from './ThreadDetail.styles';
 
 export function ThreadDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const toast = useToast();
-  const { data: thread, isLoading, error } = useThread(id!);
+  const { user } = useAuth();
+  const {
+    data: thread,
+    isLoading: isThreadLoading,
+    error: threadError,
+  } = useThread(id!);
   const addContent = useAddContent(id!);
-  const acceptContent = useAcceptContent();
-  const rejectContent = useRejectContent();
   const reorderContent = useReorderContent();
   const likeContent = useLikeContent();
 
   const [newContent, setNewContent] = useState('');
 
-  if (isLoading) {
+  if (isThreadLoading) {
     return (
-      <Container maxW="container.lg" py={8}>
-        <Text>Loading thread...</Text>
+      <Container sx={containerStyles}>
+        <Stack spacing={4}>
+          <Skeleton height="40px" />
+          <Skeleton height="200px" />
+          <Skeleton height="100px" />
+        </Stack>
       </Container>
     );
   }
 
-  if (error || !thread) {
+  if (threadError || !thread) {
     return (
-      <Container maxW="container.lg" py={8}>
+      <Container sx={containerStyles}>
         <Text color="red.500">Error loading thread</Text>
       </Container>
     );
   }
 
   const handleAddContent = async () => {
-    if (!newContent.trim()) return;
+    if (!newContent.trim()) {
+      toast({
+        title: 'Content is required',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
 
     try {
       await addContent.mutateAsync({ content: newContent });
@@ -64,26 +98,24 @@ export function ThreadDetail() {
         duration: 3000,
       });
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || 'Error adding content';
       toast({
-        title: 'Cannot add content',
-        description: errorMessage,
+        title: 'Failed to add content',
+        description: error.response?.data?.message || 'Please try again',
         status: 'error',
         duration: 5000,
-        isClosable: true,
       });
     }
   };
 
-  const handleLike = async (contentId: string) => {
+  const handleLikeContent = async (contentId: string) => {
     try {
       await likeContent.mutateAsync(contentId);
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: 'Error liking content',
+        title: 'Failed to like content',
+        description: error.response?.data?.message || 'Please try again',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
       });
     }
   };
@@ -105,78 +137,87 @@ export function ThreadDetail() {
   };
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <Stack spacing={8}>
+    <Container sx={containerStyles}>
+      <Button
+        leftIcon={<Icon as={FaArrowLeft} />}
+        sx={backButtonStyles}
+        onClick={() => navigate(-1)}
+      >
+        Back
+      </Button>
+
+      <VStack spacing={8} align="stretch">
         <Box>
-          <Heading>{thread.title}</Heading>
-          <Text color="gray.600" mt={2}>
-            {thread.description}
-          </Text>
+          <Heading size="xl" sx={titleStyles}>
+            {thread.title}
+          </Heading>
+          <Text sx={descriptionStyles}>{thread.description}</Text>
         </Box>
 
-        <VStack spacing={6} align="stretch">
-          {thread.threadContents
-            .filter((content) => content.status === 'ACCEPTED')
-            .sort((a, b) => a.order - b.order)
-            .map((content) => (
-              <Box
-                key={content.id}
-                p={6}
-                borderWidth="1px"
-                borderRadius="lg"
-                position="relative"
+        <Box sx={contentBoxStyles}>
+          <VStack spacing={6} align="stretch">
+            <Heading size="md">Story</Heading>
+            <Box sx={threadContentStyles}>
+              {thread.threadContents
+                .sort((a, b) => a.order - b.order)
+                .map((content, index) => (
+                  <Box
+                    key={content.id}
+                    position="relative"
+                    _hover={{
+                      '& .author-info': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    }}
+                  >
+                    <Popover trigger="hover" placement="top">
+                      <PopoverTrigger>
+                        <Text sx={contentTextStyles}>{content.content}</Text>
+                      </PopoverTrigger>
+                      <PopoverContent sx={popoverContentStyles}>
+                        <PopoverArrow />
+                        <PopoverBody>
+                          <HStack spacing={3}>
+                            <Avatar
+                              sx={avatarStyles}
+                              name={content.author.nickname}
+                            />
+                            <Text sx={authorNameStyles}>
+                              {content.author.nickname}
+                            </Text>
+                          </HStack>
+                        </PopoverBody>
+                      </PopoverContent>
+                    </Popover>
+                  </Box>
+                ))}
+            </Box>
+          </VStack>
+        </Box>
+
+        {user && (
+          <Box sx={contentBoxStyles}>
+            <VStack spacing={4} align="stretch">
+              <Heading size="md">Add Your Contribution</Heading>
+              <Textarea
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+                placeholder="Write your part of the story..."
+                sx={textareaStyles}
+              />
+              <Button
+                sx={submitButtonStyles}
+                onClick={handleAddContent}
+                isLoading={addContent.isPending}
+                loadingText="Adding..."
               >
-                <Stack spacing={4}>
-                  <Text>{content.content}</Text>
-                  <HStack spacing={4}>
-                    <IconButton
-                      aria-label="Like"
-                      icon={<Icon as={FaThumbsUp} />}
-                      onClick={() => handleLike(content.id)}
-                      size="sm"
-                    >
-                      {content.like}
-                    </IconButton>
-                    <IconButton
-                      aria-label="Move up"
-                      icon={<Icon as={FaArrowUp} />}
-                      onClick={() => handleReorder(content.id, 'up')}
-                      size="sm"
-                      isDisabled={content.order === 1}
-                    />
-                    <IconButton
-                      aria-label="Move down"
-                      icon={<Icon as={FaArrowDown} />}
-                      onClick={() => handleReorder(content.id, 'down')}
-                      size="sm"
-                      isDisabled={
-                        content.order === thread.threadContents.length
-                      }
-                    />
-                  </HStack>
-                </Stack>
-              </Box>
-            ))}
-        </VStack>
-
-        <Box>
-          <Textarea
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            placeholder="Add your content..."
-            minH="100px"
-          />
-          <Button
-            mt={4}
-            colorScheme="blue"
-            onClick={handleAddContent}
-            isLoading={addContent.isPending}
-            loadingText="Adding..."
-          >
-            Add Content
-          </Button>
-        </Box>
-      </Stack>
+                Add Content
+              </Button>
+            </VStack>
+          </Box>
+        )}
+      </VStack>
     </Container>
   );
 }

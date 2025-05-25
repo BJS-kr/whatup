@@ -52,7 +52,6 @@ export function SignIn() {
         status: 'success',
         duration: 3000,
       });
-      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Sign in failed',
@@ -99,7 +98,7 @@ export function SignIn() {
 
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="orange"
               width="full"
               isLoading={isLoading}
               loadingText="Signing in..."
@@ -111,7 +110,7 @@ export function SignIn() {
 
         <Text textAlign="center">
           Don't have an account?{' '}
-          <ChakraLink as={RouterLink} to="/signup" color="blue.500">
+          <ChakraLink as={RouterLink} to="/signup" color="orange.500">
             Sign up
           </ChakraLink>
         </Text>

@@ -10,29 +10,31 @@ export interface User {
 
 export interface ThreadContent {
   id: string;
-  authorId: string;
-  authorEmoji?: string;
   threadId: string;
-  parentContentId?: string;
+  authorId: string;
+  author: User;
+  content: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   like: number;
   order: number;
-  content: string;
   createdAt: string;
   updatedAt: string;
+  authorEmoji?: string;
 }
 
 export interface Thread {
   id: string;
-  authorId: string;
   title: string;
   description: string;
+  authorId: string;
+  author: User;
   maxLength: number;
   autoAccept: boolean;
-  like: number;
+  allowConsecutiveContribution: boolean;
   threadContents: ThreadContent[];
   createdAt: string;
   updatedAt: string;
+  like?: number;
 }
 
 export interface CreateThreadDto {

@@ -1,136 +1,123 @@
 import {
   Box,
-  Button,
   Container,
   Heading,
   Stack,
   Text,
   VStack,
-  Skeleton,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
+  HStack,
+  Button,
   Icon,
-  Flex,
+  useToast,
+  Skeleton,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaSignOutAlt } from 'react-icons/fa';
-import { useThreads, useLikeThread, useSignOut } from '../api/hooks';
-import { ThreadCard } from '../components/ThreadList';
+import { FaPlus } from 'react-icons/fa';
+import { useMyThreads, useOtherThreads } from '../api/hooks';
+import { ThreadList } from '../components/ThreadList';
+import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
 
-export function UserPage() {
+export const UserPage = () => {
   const navigate = useNavigate();
-  const signOut = useSignOut();
-  const { data: threads = [], isLoading, error } = useThreads();
-  const likeThread = useLikeThread();
+  const toast = useToast();
+  const { isAuthenticated, isLoading: isLoadingAuth, user } = useAuth();
+  const {
+    data: myThreads,
+    isLoading: isLoadingMyThreads,
+    error: myThreadsError,
+  } = useMyThreads();
+  const {
+    data: otherThreads,
+    isLoading: isLoadingOtherThreads,
+    error: otherThreadsError,
+  } = useOtherThreads();
 
-  const handleSignOut = async () => {
-    await signOut.mutateAsync();
-    navigate('/');
+  useEffect(() => {
+    console.log('Auth state:', { isAuthenticated, isLoadingAuth, user });
+    console.log('My threads:', {
+      data: myThreads,
+      isLoading: isLoadingMyThreads,
+      error: myThreadsError,
+    });
+    console.log('Other threads:', {
+      data: otherThreads,
+      isLoading: isLoadingOtherThreads,
+      error: otherThreadsError,
+    });
+
+    if (!isLoadingAuth && !isAuthenticated) {
+      console.log('Not authenticated, redirecting to home');
+      navigate('/');
+    }
+  }, [
+    isLoadingAuth,
+    isAuthenticated,
+    navigate,
+    myThreads,
+    isLoadingMyThreads,
+    myThreadsError,
+    otherThreads,
+    isLoadingOtherThreads,
+    otherThreadsError,
+    user,
+  ]);
+
+  const handleCreateThread = () => {
+    navigate('/threads/new');
   };
 
+  if (isLoadingAuth) {
+    console.log('Loading auth state');
+    return (
+      <Container maxW="container.xl" py={8}>
+        <Stack spacing={8}>
+          <Skeleton height="40px" />
+          <Skeleton height="200px" />
+          <Skeleton height="200px" />
+        </Stack>
+      </Container>
+    );
+  }
+
+  if (!isAuthenticated) {
+    console.log('Not authenticated, returning null');
+    return null;
+  }
+
+  console.log('Rendering user page');
   return (
     <Container maxW="container.xl" py={8}>
-      <Flex justify="flex-end" mb={8}>
-        <Button
-          leftIcon={<Icon as={FaSignOutAlt} />}
-          colorScheme="red"
-          variant="ghost"
-          onClick={handleSignOut}
-          _hover={{
-            bg: 'red.50',
-            transform: 'translateY(-2px)',
-            shadow: 'md',
-          }}
-          transition="all 0.2s"
-        >
-          Sign Out
-        </Button>
-      </Flex>
+      <Stack spacing={8}>
+        <Box>
+          <HStack justify="space-between" align="center" mb={6}>
+            <Heading size="lg">Your Threads</Heading>
+            <Button
+              leftIcon={<Icon as={FaPlus} />}
+              colorScheme="orange"
+              onClick={handleCreateThread}
+            >
+              Create Thread
+            </Button>
+          </HStack>
+          <ThreadList
+            threads={myThreads || []}
+            isLoading={isLoadingMyThreads}
+            type="my"
+          />
+        </Box>
 
-      <Box
-        p={8}
-        borderRadius="xl"
-        bg="rgba(255, 255, 255, 0.9)"
-        backdropFilter="blur(10px)"
-        borderWidth="1px"
-        borderColor="purple.100"
-        shadow="xl"
-      >
-        <VStack spacing={6} align="stretch">
-          <Heading
-            size="lg"
-            bgGradient="linear(to-r, purple.600, pink.600)"
-            bgClip="text"
-            fontWeight="bold"
-          >
-            Your Threads
+        <Box>
+          <Heading size="lg" mb={6}>
+            Others' Threads
           </Heading>
-          <Button
-            colorScheme="purple"
-            size="lg"
-            leftIcon={<Icon as={FaPlus} />}
-            onClick={() => navigate('/threads/new')}
-            _hover={{
-              transform: 'translateY(-2px)',
-              shadow: 'lg',
-            }}
-            transition="all 0.2s"
-          >
-            Create New Thread
-          </Button>
-          {isLoading ? (
-            <Stack spacing={4}>
-              {[1, 2, 3].map((i) => (
-                <Skeleton
-                  key={i}
-                  height="200px"
-                  borderRadius="xl"
-                  startColor="purple.100"
-                  endColor="pink.100"
-                />
-              ))}
-            </Stack>
-          ) : error ? (
-            <Alert status="error" borderRadius="lg">
-              <AlertIcon />
-              <AlertTitle>Error!</AlertTitle>
-              <AlertDescription>
-                Failed to load threads. Please try again later.
-              </AlertDescription>
-            </Alert>
-          ) : threads.length === 0 ? (
-            <Box
-              p={8}
-              textAlign="center"
-              borderRadius="lg"
-              bg="purple.50"
-              borderWidth="1px"
-              borderColor="purple.200"
-            >
-              <Text color="purple.600" fontSize="lg">
-                You haven't created any threads yet. Start your first story now!
-              </Text>
-            </Box>
-          ) : (
-            <Box
-              display="grid"
-              gridTemplateColumns="repeat(auto-fit, minmax(450px, 1fr))"
-              gap={6}
-              justifyItems="center"
-            >
-              {threads.map((thread) => (
-                <ThreadCard
-                  key={thread.id}
-                  thread={thread}
-                  onLike={() => likeThread.mutateAsync(thread.id)}
-                />
-              ))}
-            </Box>
-          )}
-        </VStack>
-      </Box>
+          <ThreadList
+            threads={otherThreads || []}
+            isLoading={isLoadingOtherThreads}
+            type="others"
+          />
+        </Box>
+      </Stack>
     </Container>
   );
-}
+};

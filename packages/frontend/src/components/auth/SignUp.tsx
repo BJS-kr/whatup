@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useSignUp } from '../../api/hooks';
+import { Link as RouterLink } from 'react-router-dom';
 
 export function SignUp() {
   const [email, setEmail] = useState('');
@@ -145,7 +146,7 @@ export function SignUp() {
 
             <Button
               type="submit"
-              colorScheme="blue"
+              colorScheme="orange"
               width="full"
               isLoading={isLoading}
               loadingText="Creating account..."
@@ -159,7 +160,7 @@ export function SignUp() {
           Already have an account?{' '}
           <Button
             variant="link"
-            color="blue.500"
+            color="orange.500"
             onClick={() => navigate('/signin')}
             p={0}
             h="auto"

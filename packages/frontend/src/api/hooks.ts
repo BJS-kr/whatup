@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
-import type { Thread, CreateThreadDto, AddContentDto } from './types';
+import type { Thread, CreateThreadDto, AddContentDto, User } from './types';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SignInInput {
   email: string;
@@ -27,6 +29,7 @@ export function useSignUp() {
 
 export function useSignIn() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: async (input: SignInInput) => {
@@ -35,32 +38,54 @@ export function useSignIn() {
       localStorage.setItem('accessToken', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidate and refetch auth status
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
+      await queryClient.invalidateQueries({ queryKey: ['auth'] });
+      // Wait for the auth state to be updated
+      await queryClient.refetchQueries({ queryKey: ['auth'] });
+      // Add a small delay to ensure state is stable
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Force a hard navigation to ensure clean state
+      window.location.href = '/user';
     },
   });
 }
 
 export const useSignOut = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   return useMutation({
     mutationFn: async () => {
-      localStorage.removeItem('accessToken');
+      signOut();
       queryClient.clear();
+      navigate('/');
     },
   });
 };
 
 // Thread queries
 export const useThreads = () => {
-  return useQuery<Thread[]>({
+  return useQuery({
     queryKey: ['threads'],
-    queryFn: async () => {
-      const { data } = await apiClient.get('/threads');
-      return data;
-    },
+    queryFn: () => apiClient.get<Thread[]>('/threads').then((res) => res.data),
+  });
+};
+
+export const useMyThreads = () => {
+  return useQuery({
+    queryKey: ['my-threads'],
+    queryFn: () =>
+      apiClient.get<Thread[]>('/threads/my').then((res) => res.data),
+  });
+};
+
+export const useOtherThreads = () => {
+  return useQuery({
+    queryKey: ['other-threads'],
+    queryFn: () =>
+      apiClient.get<Thread[]>('/threads/others').then((res) => res.data),
   });
 };
 
@@ -180,6 +205,17 @@ export const useLikeThread = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+};
+
+// User queries
+export const useUser = (id: string) => {
+  return useQuery<User>({
+    queryKey: ['users', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/users/${id}`);
+      return data;
     },
   });
 };
