@@ -33,6 +33,7 @@ model Thread {
   description String   // Description of the thread's direction
   maxLength   Int      // Maximum length for each content piece
   autoAccept  Boolean  @default(false) // Whether to automatically accept new content
+  allowConsecutiveContribution Boolean @default(false) // Whether to allow consecutive contributions from the same author
   like        Int      @default(0)
 
   threadContents ThreadContent[]

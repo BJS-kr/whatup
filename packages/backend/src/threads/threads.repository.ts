@@ -1,120 +1,292 @@
 import { Injectable } from '@nestjs/common';
-import { Thread, ThreadContent, ContentStatus } from '@prisma/client';
+import { ContentStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/db/prisma.service';
-import { CreateThreadDto } from './dto/create.thread.dto';
-import { AddContentDto } from './dto/add-content.dto';
+import { CreateThreadDto } from './dto/dto.create-thread';
+import { AddContentDto } from './dto/dto.add-content';
+import { from } from 'rxjs';
 
 @Injectable()
 export class ThreadsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createThread(authorId: string, dto: CreateThreadDto) {
-    return this.prisma.thread.create({
-      data: {
-        authorId,
-        title: dto.title,
-        description: dto.description,
-        maxLength: dto.maxLength,
-        autoAccept: dto.autoAccept,
-        threadContents: {
-          create: {
-            authorId,
-            content: dto.initialContent,
-            order: 1,
-            status: ContentStatus.ACCEPTED,
+  createThread(authorId: string, dto: CreateThreadDto) {
+    return from(
+      this.prisma.thread.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          maxLength: dto.maxLength,
+          autoAccept: dto.autoAccept,
+          allowConsecutiveContribution: dto.allowConsecutiveContribution,
+          author: {
+            connect: {
+              id: authorId,
+            },
+          },
+          threadContents: {
+            create: {
+              content: dto.initialContent,
+              order: 1,
+              status: dto.autoAccept
+                ? ContentStatus.ACCEPTED
+                : ContentStatus.PENDING,
+              author: {
+                connect: {
+                  id: authorId,
+                },
+              },
+            },
           },
         },
-      },
-      include: {
-        threadContents: true,
-      },
-    });
-  }
-
-  async getThreads() {
-    return this.prisma.thread.findMany({
-      include: {
-        threadContents: {
-          where: {
-            status: ContentStatus.ACCEPTED,
+        include: {
+          threadContents: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+            },
           },
-          orderBy: {
-            order: 'asc',
-          },
-        },
-      },
-    });
-  }
-
-  async getThread(threadId: string) {
-    return this.prisma.thread.findUnique({
-      where: { id: threadId },
-      include: {
-        threadContents: {
-          orderBy: {
-            order: 'asc',
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
           },
         },
-      },
-    });
+      }),
+    );
   }
 
-  async addContent(threadId: string, authorId: string, dto: AddContentDto) {
-    const thread = await this.getThread(threadId);
-    if (!thread) throw new Error('Thread not found');
-
-    const lastContent = thread.threadContents[thread.threadContents.length - 1];
-    const parentContentId = dto.parentContentId || lastContent?.id;
-
-    return this.prisma.threadContent.create({
-      data: {
-        threadId,
-        authorId,
-        content: dto.content,
-        parentContentId,
-        order: thread.threadContents.length + 1,
-        status: thread.autoAccept
-          ? ContentStatus.ACCEPTED
-          : ContentStatus.PENDING,
-      },
-    });
-  }
-
-  async acceptContent(contentId: string) {
-    return this.prisma.threadContent.update({
-      where: { id: contentId },
-      data: { status: ContentStatus.ACCEPTED },
-    });
-  }
-
-  async rejectContent(contentId: string) {
-    return this.prisma.threadContent.update({
-      where: { id: contentId },
-      data: { status: ContentStatus.REJECTED },
-    });
-  }
-
-  async reorderContent(contentId: string, newOrder: number) {
-    return this.prisma.threadContent.update({
-      where: { id: contentId },
-      data: { order: newOrder },
-    });
-  }
-
-  async likeContent(contentId: string) {
-    return this.prisma.threadContent.update({
-      where: { id: contentId },
-      data: {
-        like: {
-          increment: 1,
+  getThreads() {
+    return from(
+      this.prisma.thread.findMany({
+        include: {
+          threadContents: {
+            orderBy: {
+              order: 'asc',
+            },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+            },
+          },
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
         },
-      },
-    });
+      }),
+    );
   }
 
-  async deleteThread(threadId: string) {
-    return this.prisma.thread.delete({
-      where: { id: threadId },
-    });
+  getThreadsByAuthor(authorId: string) {
+    return from(
+      this.prisma.thread.findMany({
+        where: {
+          authorId,
+        },
+        include: {
+          threadContents: {
+            orderBy: {
+              order: 'asc',
+            },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+            },
+          },
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  getThreadsByNotAuthor(authorId: string) {
+    return from(
+      this.prisma.thread.findMany({
+        where: {
+          authorId: {
+            not: authorId,
+          },
+        },
+        include: {
+          threadContents: {
+            orderBy: {
+              order: 'asc',
+            },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+            },
+          },
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  getThread(threadId: string) {
+    return from(
+      this.prisma.thread.findUnique({
+        where: { id: threadId },
+        include: {
+          threadContents: {
+            orderBy: {
+              order: 'asc',
+            },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+            },
+          },
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  addContent(
+    threadId: string,
+    authorId: string,
+    dto: AddContentDto,
+    order: number,
+    status: ContentStatus,
+  ) {
+    return from(
+      this.prisma.threadContent.create({
+        data: {
+          threadId,
+          authorId,
+          content: dto.content,
+          parentContentId: dto.parentContentId,
+          order,
+          status,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  acceptContent(contentId: string) {
+    return from(
+      this.prisma.threadContent.update({
+        where: { id: contentId },
+        data: { status: ContentStatus.ACCEPTED },
+        include: {
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  rejectContent(contentId: string) {
+    return from(
+      this.prisma.threadContent.update({
+        where: { id: contentId },
+        data: { status: ContentStatus.REJECTED },
+        include: {
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  reorderContent(contentId: string, newOrder: number) {
+    return from(
+      this.prisma.threadContent.update({
+        where: { id: contentId },
+        data: { order: newOrder },
+        include: {
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  likeContent(contentId: string) {
+    return from(
+      this.prisma.threadContent.update({
+        where: { id: contentId },
+        data: {
+          like: {
+            increment: 1,
+          },
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  deleteThread(threadId: string) {
+    return from(
+      this.prisma.thread.delete({
+        where: { id: threadId },
+      }),
+    );
   }
 }

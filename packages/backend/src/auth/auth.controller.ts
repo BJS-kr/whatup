@@ -3,11 +3,9 @@ import { SignUpDto, signUpSchema } from './dto/dto.sign-up';
 import { SignInDto, signInSchema } from './dto/dto.sign-in';
 import { SchemaValidator } from '../common/validators/schema.validator';
 import { AuthService } from './auth.service';
-import { defaultIfEmpty, map } from 'rxjs';
 import { Response } from 'express';
-import { ACTUAL } from 'src/common/strategies/pipe.strategies';
+import { actualOrNone } from 'src/common/strategies/pipe.strategies';
 import { ConfigService } from '@nestjs/config';
-import { NONE } from 'src/common/constants';
 import { AbortInterceptor } from 'src/common/abort-control/abort.interceptor';
 
 @Controller('auth')
@@ -25,11 +23,9 @@ export class AuthController {
 
   @Post('sign-up')
   signUp(@Body(new SchemaValidator(signUpSchema)) signUpDto: SignUpDto) {
-    return this.authService.tryAddUser(signUpDto).pipe(
-      ACTUAL(),
-      map((result) => result.email),
-      defaultIfEmpty(NONE),
-    );
+    return this.authService
+      .tryAddUser(signUpDto)
+      .pipe(actualOrNone((result) => result.email));
   }
 
   @Post('sign-in')
@@ -38,8 +34,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.authService.tryGetAccessToken(signInDto).pipe(
-      ACTUAL(),
-      map((token) => {
+      actualOrNone((token) => {
         res.cookie('accessToken', token, {
           httpOnly: true,
           secure: this.secure,
@@ -48,7 +43,6 @@ export class AuthController {
 
         return token;
       }),
-      defaultIfEmpty(NONE),
     );
   }
 

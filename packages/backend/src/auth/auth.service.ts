@@ -5,11 +5,7 @@ import { from, of, switchMap, throwError } from 'rxjs';
 import { Reason, RESPONSIBLE } from 'src/common/errors/custom.errors';
 import * as bcrypt from 'bcrypt';
 import { SignInDto } from './dto/dto.sign-in';
-import {
-  abortIfError,
-  resultBefore,
-  retryIfFault,
-} from 'src/common/strategies/pipe.strategies';
+import { tryStrategy } from 'src/common/strategies/pipe.strategies';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
@@ -51,10 +47,10 @@ export class AuthService {
     this.algorithm = algorithm;
   }
 
-  private generateAccessToken(userId: string) {
+  private generateAccessToken(userId: string, nickname: string) {
     return from(
       this.jwtService.signAsync(
-        { userId },
+        { userId, nickname },
         {
           expiresIn: this.expiresIn,
           algorithm: this.algorithm,
@@ -69,18 +65,16 @@ export class AuthService {
       switchMap((hashedPassword) =>
         this.usersRepository.addUser(email, nickname, hashedPassword),
       ),
-      resultBefore(2000),
-      retryIfFault(2),
-      abortIfError(
-        this.cls.get(AC),
-        (err) =>
+      tryStrategy(this.cls.get(AC), {
+        timeout: 2000,
+        customErrorHandler: (err) =>
           new Reason(
             err?.message === 'duplicated user info'
               ? RESPONSIBLE.CLIENT
               : RESPONSIBLE.SERVER,
             err.message,
           ),
-      ),
+      }),
     );
   }
 
@@ -97,15 +91,15 @@ export class AuthService {
           ),
         );
       }),
-      switchMap((user) => this.generateAccessToken(user.id)),
-      resultBefore(2000),
-      retryIfFault(2),
-      abortIfError(this.cls.get(AC), (err) =>
-        err.message === 'user not found' ||
-        err.message === 'wrong id or password'
-          ? new Reason(RESPONSIBLE.CLIENT, err.message)
-          : new Reason(RESPONSIBLE.SERVER, 'error occurred while sign in'),
-      ),
+      switchMap((user) => this.generateAccessToken(user.id, user.nickname)),
+      tryStrategy(this.cls.get(AC), {
+        timeout: 2000,
+        customErrorHandler: (err) =>
+          err.message === 'user not found' ||
+          err.message === 'wrong id or password'
+            ? new Reason(RESPONSIBLE.CLIENT, err.message)
+            : new Reason(RESPONSIBLE.SERVER, 'error occurred while sign in'),
+      }),
     );
   }
 }

@@ -1,81 +1,175 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  UnauthorizedException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { ThreadsRepository } from './threads.repository';
-import { CreateThreadDto } from './dto/create.thread.dto';
-import { AddContentDto } from './dto/add-content.dto';
+import { CreateThreadDto } from './dto/dto.create-thread';
+import { AddContentDto } from './dto/dto.add-content';
+import { switchMap, throwError } from 'rxjs';
+import { Reason, RESPONSIBLE } from 'src/common/errors/custom.errors';
+import { tryStrategy } from 'src/common/strategies/pipe.strategies';
+import { AbortControllerStorage } from 'src/common/cls/ac.store';
+import { AC } from 'src/common/constants';
 import { ContentStatus } from '@prisma/client';
 
 @Injectable()
 export class ThreadsService {
   constructor(
-    private readonly cls: ClsService,
+    private readonly cls: ClsService<AbortControllerStorage>,
     private readonly threadsRepository: ThreadsRepository,
   ) {}
 
-  async createThread(dto: CreateThreadDto) {
+  tryCreateThread(dto: CreateThreadDto) {
     const user = this.cls.get('user');
-    if (!user) {
-      throw new InternalServerErrorException();
-    }
-    return this.threadsRepository.createThread(user.id, dto);
-  }
-
-  async getThreads() {
-    return this.threadsRepository.getThreads();
-  }
-
-  async getThread(threadId: string) {
-    return this.threadsRepository.getThread(threadId);
-  }
-
-  async addContent(threadId: string, dto: AddContentDto) {
-    const userId = this.cls.get('userId');
-    if (!userId) {
-      throw new UnauthorizedException();
+    if (!user?.userId) {
+      return throwError(() => new Error('user not authenticated'));
     }
 
-    const thread = await this.threadsRepository.getThread(threadId);
-    if (!thread) {
-      throw new BadRequestException('Thread not found');
+    return this.threadsRepository.createThread(user.userId, dto).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to create thread',
+      }),
+    );
+  }
+
+  tryGetThreads() {
+    return this.threadsRepository.getThreads().pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to get threads',
+      }),
+    );
+  }
+
+  tryGetMyThreads() {
+    const user = this.cls.get('user');
+    if (!user?.userId) {
+      return throwError(() => new Error('user not authenticated'));
     }
 
-    // Get the last accepted content
-    const lastAcceptedContent = thread.threadContents
-      .filter((content) => content.status === ContentStatus.ACCEPTED)
-      .sort((a, b) => b.order - a.order)[0];
+    return this.threadsRepository.getThreadsByAuthor(user.userId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to get my threads',
+      }),
+    );
+  }
 
-    // Check if the last content was from the same author
-    if (lastAcceptedContent && lastAcceptedContent.authorId === userId) {
-      throw new BadRequestException(
-        'You cannot add content right after your own contribution. Please wait for someone else to contribute first.',
-      );
+  tryGetOtherThreads() {
+    const user = this.cls.get('user');
+    if (!user?.userId) {
+      return throwError(() => new Error('user not authenticated'));
     }
 
-    return this.threadsRepository.addContent(threadId, userId, dto);
+    return this.threadsRepository.getThreadsByNotAuthor(user.userId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to get other threads',
+      }),
+    );
   }
 
-  async acceptContent(contentId: string) {
-    return this.threadsRepository.acceptContent(contentId);
+  tryGetThread(threadId: string) {
+    return this.threadsRepository.getThread(threadId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to get thread',
+      }),
+    );
   }
 
-  async rejectContent(contentId: string) {
-    return this.threadsRepository.rejectContent(contentId);
+  tryAddContent(threadId: string, dto: AddContentDto) {
+    const user = this.cls.get('user');
+    if (!user?.userId) {
+      return throwError(() => new Error('user not authenticated'));
+    }
+
+    return this.threadsRepository.getThread(threadId).pipe(
+      switchMap((thread) => {
+        if (!thread) {
+          return throwError(() => new Error('thread not found'));
+        }
+
+        // Get the last content (including pending)
+        const lastContent = thread.threadContents.sort(
+          (a, b) => b.order - a.order,
+        )[0];
+
+        // Check if the last content was from the same author and consecutive contributions are not allowed
+        if (
+          !thread.allowConsecutiveContribution &&
+          lastContent &&
+          lastContent.authorId === user.userId
+        ) {
+          return throwError(
+            () => new Error('consecutive contributions not allowed'),
+          );
+        }
+
+        const parentContentId = dto.parentContentId || lastContent?.id;
+        const order = thread.threadContents.length + 1;
+        const status = thread.autoAccept
+          ? ContentStatus.ACCEPTED
+          : ContentStatus.PENDING;
+
+        const updatedDto = { ...dto, parentContentId };
+
+        return this.threadsRepository.addContent(
+          threadId,
+          user.userId,
+          updatedDto,
+          order,
+          status,
+        );
+      }),
+      tryStrategy(this.cls.get(AC), {
+        customErrorHandler: (err) => {
+          if (err.message === 'thread not found') {
+            return new Reason(RESPONSIBLE.CLIENT, 'thread not found');
+          }
+          if (err.message === 'consecutive contributions not allowed') {
+            return new Reason(
+              RESPONSIBLE.CLIENT,
+              'you cannot add content right after your own contribution',
+            );
+          }
+          return new Reason(RESPONSIBLE.SERVER, 'failed to add content');
+        },
+      }),
+    );
   }
 
-  async reorderContent(contentId: string, newOrder: number) {
-    return this.threadsRepository.reorderContent(contentId, newOrder);
+  tryAcceptContent(contentId: string) {
+    return this.threadsRepository.acceptContent(contentId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to accept content',
+      }),
+    );
   }
 
-  async likeContent(contentId: string) {
-    return this.threadsRepository.likeContent(contentId);
+  tryRejectContent(contentId: string) {
+    return this.threadsRepository.rejectContent(contentId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to reject content',
+      }),
+    );
   }
 
-  async deleteThread(threadId: string) {
-    return this.threadsRepository.deleteThread(threadId);
+  tryReorderContent(contentId: string, newOrder: number) {
+    return this.threadsRepository.reorderContent(contentId, newOrder).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to reorder content',
+      }),
+    );
+  }
+
+  tryLikeContent(contentId: string) {
+    return this.threadsRepository.likeContent(contentId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to like content',
+      }),
+    );
+  }
+
+  tryDeleteThread(threadId: string) {
+    return this.threadsRepository.deleteThread(threadId).pipe(
+      tryStrategy(this.cls.get(AC), {
+        errorMessage: 'failed to delete thread',
+      }),
+    );
   }
 }

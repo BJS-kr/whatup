@@ -5,6 +5,7 @@ export const createThreadSchema = z.object({
   description: z.string().min(1),
   maxLength: z.number().int().positive(),
   autoAccept: z.boolean().default(false),
+  allowConsecutiveContribution: z.boolean().default(false),
   initialContent: z.string().min(1),
 });
 

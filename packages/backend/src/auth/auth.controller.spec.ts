@@ -120,6 +120,7 @@ describe('AuthController', () => {
         return of({
           id: '1',
           email: signInDto.email,
+          nickname: 'test',
           password: hashedPassword,
         });
       });
@@ -159,6 +160,7 @@ describe('AuthController', () => {
         id: '1',
         email: signInDto.email,
         password: 'wrong password',
+        nickname: 'test',
       }),
     );
 

@@ -35,6 +35,7 @@ export class UsersRepository {
           id: true,
           email: true,
           password: true,
+          nickname: true,
         },
       }),
     );
