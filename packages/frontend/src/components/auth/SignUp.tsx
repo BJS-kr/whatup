@@ -96,52 +96,97 @@ export function SignUp() {
   return (
     <Box maxW="md" mx="auto" mt={8} p={6} borderWidth="1px" borderRadius="lg">
       <VStack spacing={6} align="stretch">
-        <Heading size="lg" textAlign="center">
+        <Heading
+          size="lg"
+          textAlign="center"
+          color="rgba(255, 255, 255, 0.9)"
+          textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+        >
           Sign Up
         </Heading>
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
             <FormControl isInvalid={!!errors.email}>
-              <FormLabel>Email</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Email
+              </FormLabel>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.email}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.email}
+              </FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.nickname}>
-              <FormLabel>Pen Name</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Pen Name
+              </FormLabel>
               <Input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="Choose a pen name"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.nickname}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.nickname}
+              </FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.password}>
-              <FormLabel>Password</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Password
+              </FormLabel>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.password}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.password}
+              </FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.confirmPassword}>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Confirm Password
+              </FormLabel>
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.confirmPassword}
+              </FormErrorMessage>
             </FormControl>
 
             <Button
@@ -156,11 +201,15 @@ export function SignUp() {
           </VStack>
         </form>
 
-        <Text textAlign="center">
+        <Text
+          textAlign="center"
+          color="rgba(255, 255, 255, 0.9)"
+          textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+        >
           Already have an account?{' '}
           <Button
             variant="link"
-            color="orange.500"
+            color="orange.300"
             onClick={() => navigate('/signin')}
             p={0}
             h="auto"

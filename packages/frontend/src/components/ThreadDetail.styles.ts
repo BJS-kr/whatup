@@ -20,9 +20,8 @@ export const titleStyles: StyleProps = {
   fontSize: { base: '3xl', md: '4xl' },
   fontWeight: 'bold',
   mb: 4,
-  bgGradient: 'linear(to-r, red.500, orange.500)',
-  bgClip: 'text',
-  color: 'transparent',
+  color: 'white',
+  textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
 };
 
 export const subtitleStyles: StyleProps = {

@@ -1,8 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
-import type { Thread, CreateThreadDto, AddContentDto, User } from './types';
+import type {
+  Thread,
+  CreateThreadDto,
+  UpdateThreadDto,
+  AddContentDto,
+  User,
+} from './types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
 
 interface SignInInput {
   email: string;
@@ -89,6 +96,20 @@ export const useOtherThreads = () => {
   });
 };
 
+export const useLikedThreads = () => {
+  return useQuery({
+    queryKey: ['liked-threads'],
+    queryFn: () => api.threads.getLiked(),
+  });
+};
+
+export const useTrendingThreads = () => {
+  return useQuery({
+    queryKey: ['trending-threads'],
+    queryFn: () => api.threads.getTrending(),
+  });
+};
+
 export const useThread = (id: string) => {
   return useQuery<Thread>({
     queryKey: ['threads', id],
@@ -109,6 +130,25 @@ export const useCreateThread = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+};
+
+export const useUpdateThread = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, dto }: { id: string; dto: UpdateThreadDto }) => {
+      const { data } = await apiClient.patch(`/threads/${id}`, dto);
+      return data;
+    },
+    onSuccess: (_, { id }) => {
+      // Invalidate all thread-related queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      queryClient.invalidateQueries({ queryKey: ['threads', id] });
+      queryClient.invalidateQueries({ queryKey: ['my-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['other-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['liked-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['trending-threads'] });
     },
   });
 };
@@ -159,6 +199,48 @@ export const useRejectContent = () => {
   });
 };
 
+export const useRequestChanges = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      contentId,
+      message,
+    }: {
+      contentId: string;
+      message: string;
+    }) => {
+      const { data } = await apiClient.put(
+        `/threads/content/${contentId}/request-changes`,
+        { message },
+      );
+      return data;
+    },
+    onSuccess: (_, { contentId }) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-contents'] });
+    },
+  });
+};
+
+export const useUpdatePendingContent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      contentId,
+      content,
+    }: {
+      contentId: string;
+      content: string;
+    }) => {
+      return api.threads.updatePendingContent(contentId, content);
+    },
+    onSuccess: (_, { contentId }) => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-contents'] });
+    },
+  });
+};
+
 export const useReorderContent = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -198,13 +280,29 @@ export const useLikeContent = () => {
 
 export const useLikeThread = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (threadId: string) => {
-      const { data } = await apiClient.put(`/threads/${threadId}/like`);
-      return data;
+      return api.threads.toggleLike(threadId);
     },
-    onSuccess: () => {
+    onSuccess: (data, threadId) => {
+      // Update the thread in cache with new like count
+      queryClient.setQueryData(
+        ['threads', threadId],
+        (oldData: Thread | undefined) => {
+          if (oldData) {
+            return { ...oldData, _count: { threadLikes: data.likeCount } };
+          }
+          return oldData;
+        },
+      );
+
+      // Invalidate thread lists to refresh like counts and section membership
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+      queryClient.invalidateQueries({ queryKey: ['my-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['other-threads'] }); // Thread may move out of this section
+      queryClient.invalidateQueries({ queryKey: ['liked-threads'] }); // Thread may move into/out of this section
+      queryClient.invalidateQueries({ queryKey: ['trending-threads'] });
     },
   });
 };

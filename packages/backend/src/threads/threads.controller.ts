@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   UseGuards,
@@ -13,6 +14,7 @@ import { ThreadsService } from './threads.service';
 import { AbortInterceptor } from 'src/common/abort-control/abort.interceptor';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { CreateThreadDto, createThreadSchema } from './dto/dto.create-thread';
+import { UpdateThreadDto, updateThreadSchema } from './dto/dto.update-thread';
 import { AddContentDto, addContentSchema } from './dto/dto.add-content';
 import { SchemaValidator } from '../common/validators/schema.validator';
 import { actualOrNone } from 'src/common/strategies/pipe.strategies';
@@ -32,6 +34,16 @@ export class ThreadsController {
       .pipe(actualOrNone((thread) => thread.id));
   }
 
+  @Patch(':id')
+  updateThread(
+    @Param('id') id: string,
+    @Body(new SchemaValidator(updateThreadSchema)) dto: UpdateThreadDto,
+  ) {
+    return this.threadsService
+      .tryUpdateThread(id, dto)
+      .pipe(actualOrNone((thread) => thread));
+  }
+
   @Get('my')
   getMyThreads() {
     return this.threadsService
@@ -43,6 +55,20 @@ export class ThreadsController {
   getOtherThreads() {
     return this.threadsService
       .tryGetOtherThreads()
+      .pipe(actualOrNone((threads) => threads));
+  }
+
+  @Get('liked')
+  getLikedThreads() {
+    return this.threadsService
+      .tryGetLikedThreads()
+      .pipe(actualOrNone((threads) => threads));
+  }
+
+  @Get('trending')
+  getTrendingThreads() {
+    return this.threadsService
+      .tryGetTrendingThreads()
       .pipe(actualOrNone((threads) => threads));
   }
 
@@ -70,6 +96,23 @@ export class ThreadsController {
       .pipe(actualOrNone((content) => content.id));
   }
 
+  @Put('content/:id/request-changes')
+  requestChanges(@Param('id') id: string, @Body('message') message: string) {
+    return this.threadsService
+      .tryRequestChanges(id, message)
+      .pipe(actualOrNone((content) => content.id));
+  }
+
+  @Put('content/:id/update')
+  updatePendingContent(
+    @Param('id') id: string,
+    @Body('content') content: string,
+  ) {
+    return this.threadsService
+      .tryUpdatePendingContent(id, content)
+      .pipe(actualOrNone((updatedContent) => updatedContent.id));
+  }
+
   @Put('content/:id/reorder')
   reorderContent(@Param('id') id: string, @Body('order') order: number) {
     return this.threadsService
@@ -77,13 +120,30 @@ export class ThreadsController {
       .pipe(actualOrNone((content) => content.id));
   }
 
+  @Get(':id/pending-contents')
+  getPendingContents(@Param('id') id: string) {
+    return this.threadsService.tryGetPendingContents(id);
+  }
+
+  @Put(':id/like')
+  toggleThreadLike(@Param('id') id: string) {
+    return this.threadsService.tryToggleThreadLike(id).pipe(
+      actualOrNone((thread) =>
+        thread
+          ? {
+              threadId: thread.id,
+              likeCount: thread._count.threadLikes,
+            }
+          : null,
+      ),
+    );
+  }
+
   @Put('content/:id/like')
   likeContent(@Param('id') id: string) {
     return this.threadsService
       .tryLikeContent(id)
-      .pipe(
-        actualOrNone((content) => ({ id: content.id, likes: content.like })),
-      );
+      .pipe(actualOrNone((content) => content.id));
   }
 
   @Delete(':id')

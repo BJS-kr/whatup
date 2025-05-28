@@ -13,7 +13,12 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus } from 'react-icons/fa';
-import { useMyThreads, useOtherThreads } from '../api/hooks';
+import {
+  useMyThreads,
+  useOtherThreads,
+  useLikedThreads,
+  useTrendingThreads,
+} from '../api/hooks';
 import { ThreadList } from '../components/ThreadList';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
@@ -32,6 +37,16 @@ export const UserPage = () => {
     isLoading: isLoadingOtherThreads,
     error: otherThreadsError,
   } = useOtherThreads();
+  const {
+    data: likedThreads,
+    isLoading: isLoadingLikedThreads,
+    error: likedThreadsError,
+  } = useLikedThreads();
+  const {
+    data: trendingThreads,
+    isLoading: isLoadingTrendingThreads,
+    error: trendingThreadsError,
+  } = useTrendingThreads();
 
   useEffect(() => {
     console.log('Auth state:', { isAuthenticated, isLoadingAuth, user });
@@ -91,13 +106,19 @@ export const UserPage = () => {
       <Stack spacing={8}>
         <Box>
           <HStack justify="space-between" align="center" mb={6}>
-            <Heading size="lg">Your Threads</Heading>
+            <Heading
+              size="lg"
+              color="rgba(255, 255, 255, 0.9)"
+              textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+            >
+              My Stories
+            </Heading>
             <Button
               leftIcon={<Icon as={FaPlus} />}
               colorScheme="orange"
               onClick={handleCreateThread}
             >
-              Create Thread
+              Create Story
             </Button>
           </HStack>
           <ThreadList
@@ -108,8 +129,45 @@ export const UserPage = () => {
         </Box>
 
         <Box>
-          <Heading size="lg" mb={6}>
-            Others' Threads
+          <Heading
+            size="lg"
+            mb={6}
+            color="rgba(255, 255, 255, 0.9)"
+            textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+          >
+            Liked Stories
+          </Heading>
+          <ThreadList
+            threads={likedThreads || []}
+            isLoading={isLoadingLikedThreads}
+            type="liked"
+          />
+        </Box>
+
+        <Box>
+          <Heading
+            size="lg"
+            mb={6}
+            color="rgba(255, 255, 255, 0.9)"
+            textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+          >
+            Trending Stories
+          </Heading>
+          <ThreadList
+            threads={trendingThreads || []}
+            isLoading={isLoadingTrendingThreads}
+            type="trending"
+          />
+        </Box>
+
+        <Box>
+          <Heading
+            size="lg"
+            mb={6}
+            color="rgba(255, 255, 255, 0.9)"
+            textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+          >
+            All Stories
           </Heading>
           <ThreadList
             threads={otherThreads || []}

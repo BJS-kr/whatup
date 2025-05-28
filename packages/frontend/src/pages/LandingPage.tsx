@@ -107,13 +107,7 @@ const ExampleThreads: Thread[] = [
         'Mystery Writer',
         '📚',
       ),
-      createExampleContent(
-        '3',
-        'example-2',
-        'Your time to write!',
-        'You',
-        '✍️',
-      ),
+      createExampleContent('3', 'example-2', 'Your turn!', 'You', '✍️'),
     ],
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     authorId: 'Sarah Morgan',
@@ -129,7 +123,10 @@ const ExampleThreads: Thread[] = [
     maxLength: 1000,
     autoAccept: false,
     allowConsecutiveContribution: false,
-    like: 0,
+    threadLikes: [],
+    _count: {
+      threadLikes: 0,
+    },
     updatedAt: new Date().toISOString(),
   },
   {
@@ -152,13 +149,7 @@ const ExampleThreads: Thread[] = [
         'Wizard of the West',
         '🧙',
       ),
-      createExampleContent(
-        '3',
-        'example-3',
-        'Your time to write!',
-        'You',
-        '✍️',
-      ),
+      createExampleContent('3', 'example-3', 'Your turn!', 'You', '✍️'),
     ],
     createdAt: new Date(Date.now() - 172800000).toISOString(),
     authorId: 'Elara the Brave',
@@ -174,7 +165,10 @@ const ExampleThreads: Thread[] = [
     maxLength: 1000,
     autoAccept: false,
     allowConsecutiveContribution: false,
-    like: 0,
+    threadLikes: [],
+    _count: {
+      threadLikes: 0,
+    },
     updatedAt: new Date().toISOString(),
   },
 ];
@@ -218,14 +212,14 @@ export const LandingPage = () => {
       </Box>
 
       <Stack spacing={8}>
-        <Box sx={sectionStyles}>
+        {/* <Box sx={sectionStyles}>
           <VStack spacing={6} align="stretch">
             <Heading sx={sectionTitleStyles}>Explore the Dreams</Heading>
             <Text sx={sectionTextStyles}>
               Discover stories from other dreamers
             </Text>
           </VStack>
-        </Box>
+        </Box> */}
 
         <Box sx={sectionStyles}>
           <VStack spacing={6} align="stretch">
@@ -249,7 +243,9 @@ export const LandingPage = () => {
 
             <HStack spacing={8} align="stretch">
               <VStack spacing={4} align="stretch" w="50%">
-                <Text sx={storyTitleStyles}>Be an Editor</Text>
+                <Text sx={storyTitleStyles}>
+                  Be an Editor (Choose one of the branches!)
+                </Text>
                 <Box sx={storyBoxStyles}>
                   <VStack spacing={8} align="stretch">
                     <Box position="relative">

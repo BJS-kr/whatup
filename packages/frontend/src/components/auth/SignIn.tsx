@@ -69,31 +69,56 @@ export function SignIn() {
   return (
     <Box maxW="md" mx="auto" mt={8} p={6} borderWidth="1px" borderRadius="lg">
       <VStack spacing={6} align="stretch">
-        <Heading size="lg" textAlign="center">
+        <Heading
+          size="lg"
+          textAlign="center"
+          color="rgba(255, 255, 255, 0.9)"
+          textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+        >
           Sign In
         </Heading>
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
             <FormControl isInvalid={!!errors.email}>
-              <FormLabel>Email</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Email
+              </FormLabel>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.email}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.email}
+              </FormErrorMessage>
             </FormControl>
 
             <FormControl isInvalid={!!errors.password}>
-              <FormLabel>Password</FormLabel>
+              <FormLabel
+                color="rgba(255, 255, 255, 0.9)"
+                textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+              >
+                Password
+              </FormLabel>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                bg="rgba(255, 255, 255, 0.9)"
+                color="gray.800"
+                _placeholder={{ color: 'gray.500' }}
               />
-              <FormErrorMessage>{errors.password}</FormErrorMessage>
+              <FormErrorMessage color="red.300">
+                {errors.password}
+              </FormErrorMessage>
             </FormControl>
 
             <Button
@@ -108,9 +133,13 @@ export function SignIn() {
           </VStack>
         </form>
 
-        <Text textAlign="center">
+        <Text
+          textAlign="center"
+          color="rgba(255, 255, 255, 0.9)"
+          textShadow="1px 1px 2px rgba(0, 0, 0, 0.7)"
+        >
           Don't have an account?{' '}
-          <ChakraLink as={RouterLink} to="/signup" color="orange.500">
+          <ChakraLink as={RouterLink} to="/signup" color="orange.300">
             Sign up
           </ChakraLink>
         </Text>

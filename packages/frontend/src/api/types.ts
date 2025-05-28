@@ -32,9 +32,12 @@ export interface Thread {
   autoAccept: boolean;
   allowConsecutiveContribution: boolean;
   threadContents: ThreadContent[];
+  threadLikes: Array<{ id: string }>;
   createdAt: string;
   updatedAt: string;
-  like?: number;
+  _count: {
+    threadLikes: number;
+  };
 }
 
 export interface CreateThreadDto {
@@ -43,6 +46,13 @@ export interface CreateThreadDto {
   maxLength: number;
   autoAccept: boolean;
   initialContent: string;
+}
+
+export interface UpdateThreadDto {
+  description: string;
+  maxLength: number;
+  autoAccept: boolean;
+  allowConsecutiveContribution: boolean;
 }
 
 export interface AddContentDto {

@@ -7,7 +7,7 @@ import {
   VStack,
   Icon,
 } from '@chakra-ui/react';
-import { FaBook, FaUsers } from 'react-icons/fa';
+import { FaBook, FaUsers, FaHeart, FaFire } from 'react-icons/fa';
 import type { Thread } from '../api/types';
 import { ThreadCard } from './ThreadCard';
 import {
@@ -21,7 +21,7 @@ import {
 export interface ThreadListProps {
   threads: Thread[];
   isLoading?: boolean;
-  type?: 'my' | 'others';
+  type?: 'my' | 'others' | 'liked' | 'trending';
 }
 
 export const ThreadList = ({
@@ -43,18 +43,39 @@ export const ThreadList = ({
   }
 
   if (threads.length === 0) {
+    const getEmptyStateContent = () => {
+      switch (type) {
+        case 'my':
+          return {
+            icon: FaBook,
+            text: "You haven't created any stories yet. Start your first story!",
+          };
+        case 'liked':
+          return {
+            icon: FaHeart,
+            text: "You haven't liked any stories from other users yet. Explore and like stories you enjoy!",
+          };
+        case 'trending':
+          return {
+            icon: FaFire,
+            text: 'No trending stories at the moment. Check back later!',
+          };
+        case 'others':
+        default:
+          return {
+            icon: FaUsers,
+            text: 'No other stories available. All stories from other users are either liked by you or trending!',
+          };
+      }
+    };
+
+    const { icon, text } = getEmptyStateContent();
+
     return (
       <Box sx={emptyStateBoxStyles}>
         <VStack spacing={4} align="center">
-          <Icon
-            as={type === 'my' ? FaBook : FaUsers}
-            sx={emptyStateIconStyles}
-          />
-          <Text sx={emptyStateTextStyles}>
-            {type === 'my'
-              ? "You haven't created any threads yet. Start your first story!"
-              : 'No threads from other users yet. Be the first to create one!'}
-          </Text>
+          <Icon as={icon} sx={emptyStateIconStyles} />
+          <Text sx={emptyStateTextStyles}>{text}</Text>
         </VStack>
       </Box>
     );
@@ -64,7 +85,7 @@ export const ThreadList = ({
     <Grid sx={gridStyles}>
       {threads.map((thread) => (
         <Box key={thread.id}>
-          <ThreadCard thread={thread} />
+          <ThreadCard thread={thread} showSettings={type === 'my'} />
         </Box>
       ))}
     </Grid>

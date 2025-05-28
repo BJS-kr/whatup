@@ -45,11 +45,12 @@ export const titleStyles = {
 
 export const subtitleStyles = {
   fontSize: 'xl',
-  color: 'gray.600',
+  color: 'rgba(255, 255, 255, 0.9)',
   maxW: '2xl',
   mx: 'auto',
   fontFamily: "'Inter', sans-serif",
   lineHeight: 'tall',
+  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.7)',
 };
 
 export const sectionStyles = {

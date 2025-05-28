@@ -17,6 +17,8 @@ model User {
 
   threads Thread[]
   threadContents ThreadContent[]
+  threadLikes UserThreadLike[]
+  notices Notice[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -34,9 +36,9 @@ model Thread {
   maxLength   Int      // Maximum length for each content piece
   autoAccept  Boolean  @default(false) // Whether to automatically accept new content
   allowConsecutiveContribution Boolean @default(false) // Whether to allow consecutive contributions from the same author
-  like        Int      @default(0)
 
   threadContents ThreadContent[]
+  threadLikes UserThreadLike[]
 
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -73,5 +75,49 @@ enum ContentStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+model UserThreadLike {
+  id       String @id @default(uuid())
+  
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  
+  thread   Thread @relation(fields: [threadId], references: [id])
+  threadId String
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@unique([userId, threadId])
+  @@map("user_thread_likes")
+}
+
+model Notice {
+  id          String      @id @default(uuid())
+  
+  user        User        @relation(fields: [userId], references: [id])
+  userId      String
+  
+  type        NoticeType
+  title       String
+  message     String
+  isRead      Boolean     @default(false)
+  
+  // Related content for context
+  threadId    String?
+  contentId   String?
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  @@map("notices")
+}
+
+enum NoticeType {
+  CHANGE_REQUEST
+  CONTENT_ACCEPTED
+  CONTENT_REJECTED
+  NEW_CONTRIBUTION
+  NEW_SUBMISSION
 }
 
